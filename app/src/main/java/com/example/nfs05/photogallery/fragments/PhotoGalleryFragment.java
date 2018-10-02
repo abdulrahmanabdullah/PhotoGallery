@@ -7,6 +7,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +19,7 @@ import com.example.nfs05.photogallery.R;
 import com.example.nfs05.photogallery.data.PhotoItem;
 import com.example.nfs05.photogallery.networks.FlickerFetcher;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +29,8 @@ public class PhotoGalleryFragment extends Fragment {
     private List<PhotoItem> mPhotoItemList = new ArrayList<>();
     private GridLayoutManager layoutManager ;
     private RelativeLayout mRelativeLayout ;
+    private FetchPhotoTask task ;
 
-    private FetchPhotoTask taskOne ;
 
     // When move next page ..
     private RecyclerView.OnScrollListener onScrolled = new RecyclerView.OnScrollListener() {
@@ -44,7 +46,7 @@ public class PhotoGalleryFragment extends Fragment {
             int totalItemCount  = layoutManager.getItemCount();
             int firstItemPosition  = layoutManager.findFirstVisibleItemPosition();
             if ((firstItemPosition + visibleItemCount) >= totalItemCount){
-
+                mRelativeLayout.setVisibility(View.VISIBLE);
                 loadMorePhotos();
             }
         }
@@ -59,8 +61,8 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         //start execute task .
-        taskOne = new FetchPhotoTask();
-        taskOne.execute(1);
+        task = new FetchPhotoTask();
+        task.execute(1);
     }
 
     @Nullable
@@ -80,9 +82,20 @@ public class PhotoGalleryFragment extends Fragment {
     private void setupAdapter(){
         if (isAdded()){ // Why isAdded()? Every Activities have callback , And we have worker thread in activity ,When workerThread callback check the fragment is attached .
             mRecyclerView.setAdapter(new PhotoAdapter(mPhotoItemList));
+            Log.i(TAG," Photo Size = "+mPhotoItemList.size());
             mRecyclerView.addOnScrollListener(onScrolled);
         }
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        //todo : cancel task .
+        task.cancel(true);
+        // avoid memory leak .
+        mRecyclerView.removeOnScrollListener(onScrolled);
+    }
+
     // View Holder
     private class PhotoHolder extends RecyclerView.ViewHolder{
         private TextView mTitleTextView ;
@@ -127,34 +140,27 @@ public class PhotoGalleryFragment extends Fragment {
        }
    }
 
-   // it's job over .
-    private  class FetchPhotoTask extends AsyncTask<Integer,Void,List<PhotoItem>>{
-        int currentCall ;
+    private   class FetchPhotoTask extends AsyncTask<Integer,Void,List<PhotoItem>>{
+
         @Override
         protected List<PhotoItem> doInBackground(Integer... integers) {
-            currentCall = integers[0];
             return new FlickerFetcher().fetchPhotoItmes(integers[0]);
         }
 
         @Override
         protected void onPostExecute(List<PhotoItem> photoItems) {
             super.onPostExecute(photoItems);
-            if (currentCall == 1){
-                mPhotoItemList = photoItems;
-                setupAdapter();
-            }else{
-                mPhotoItemList.addAll(photoItems);
-                setupAdapter();
-            }
+            mRelativeLayout.setVisibility(mRecyclerView.isEnabled()?View.GONE:View.VISIBLE);
+            mPhotoItemList = photoItems;
+            setupAdapter();
         }
+
     }
 
     // load more photos.
     private void loadMorePhotos(){
         // TODO: 02/10/2018 solve this issue .
-        mRelativeLayout.setVisibility(mRecyclerView.isEnabled()?View.VISIBLE:View.GONE);
-        if (taskOne.getStatus() == AsyncTask.Status.FINISHED){
-            Toast.makeText(getActivity()," Finished ",Toast.LENGTH_SHORT).show();
+        if (task.getStatus() == AsyncTask.Status.FINISHED){
             new FetchPhotoTask().execute(2);
         }else{
             Toast.makeText(getActivity()," Still work ",Toast.LENGTH_SHORT).show();
@@ -162,3 +168,4 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
 }
+
