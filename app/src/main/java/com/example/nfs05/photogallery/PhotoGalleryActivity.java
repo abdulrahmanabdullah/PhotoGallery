@@ -13,4 +13,8 @@ public class PhotoGalleryActivity extends SingleFragmentActivity {
         return PhotoGalleryFragment.newInstance();
     }
 
+    @Override
+    protected int getLayoutResId() {
+        return R.layout.activity_fragment_single;
+    }
 }

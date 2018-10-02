@@ -1,10 +1,12 @@
 package com.example.nfs05.photogallery.fragments;
 
+import android.content.res.Configuration;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -24,12 +26,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PhotoGalleryFragment extends Fragment {
+
+
+
     private RecyclerView mRecyclerView;
     private final String TAG = "photoFragment";
     private List<PhotoItem> mPhotoItemList = new ArrayList<>();
     private GridLayoutManager layoutManager ;
     private RelativeLayout mRelativeLayout ;
     private FetchPhotoTask task ;
+    private GridLayoutManager mGridLayoutManager ;
+
 
 
     // When move next page ..
@@ -72,8 +79,10 @@ public class PhotoGalleryFragment extends Fragment {
         mRecyclerView = view.findViewById(R.id.photo_recycler_view);
         mRelativeLayout = view.findViewById(R.id.relative_layout);
         mRelativeLayout.setVisibility(View.GONE);
-        layoutManager= new GridLayoutManager(getActivity(),3);
+        mGridLayoutManager = new GridLayoutManager(getActivity(),3);
+        layoutManager= mGridLayoutManager;
         mRecyclerView.setLayoutManager(layoutManager);
+        mRecyclerView.setItemAnimator(new DefaultItemAnimator());
         setupAdapter();
         return view;
     }
@@ -90,7 +99,6 @@ public class PhotoGalleryFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        //todo : cancel task .
         task.cancel(true);
         // avoid memory leak .
         mRecyclerView.removeOnScrollListener(onScrolled);
@@ -118,6 +126,7 @@ public class PhotoGalleryFragment extends Fragment {
        public PhotoAdapter(List<PhotoItem> photoItemList) {
            mPhotoItemList = photoItemList;
        }
+
 
        @NonNull
        @Override
@@ -167,5 +176,21 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
+    private void refreshGridView(){
+
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        refreshGridView();
+    }
+
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        refreshGridView();
+    }
 }
 
