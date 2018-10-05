@@ -26,6 +26,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FlickerFetcher {
+
+    private Response mResponse ;
+  private  Photos mPhotos ;
+  private PhotoItem mPhotoItem ;
+    public FlickerFetcher(){
+        mResponse = new Response();
+        mPhotos = new Photos();
+        mPhotoItem = new PhotoItem();
+    }
     private String TAG = "Fetcher";
     private String API_KEY = "cd323fa75ca30d9f80b5525bb3f1ac09";
     // open connect and get bytes stream .
@@ -58,36 +67,8 @@ public class FlickerFetcher {
         return new String(getUrlBytes(urlSpec));
     }
 
-    // separate url .
-    public List<GalleryItem> fetchItems(){
-        List<GalleryItem> items = new ArrayList<>();
-        try{
-           String url = Uri.parse("https://api.flickr.com/services/rest/")
-                   .buildUpon()
-                   .appendQueryParameter("method","flickr.photos.getRecent")
-                   .appendQueryParameter("api_key",API_KEY)
-                   .appendQueryParameter("format","json")
-                   .appendQueryParameter("nojsoncallback","1")
-                   .appendQueryParameter("extras","url_s")
-                   .appendQueryParameter("page",String.valueOf(2))
-                   .build()
-                   .toString();
-           Log.i(TAG," Url now is :  " + url) ; // it's work .
-            String jsonString = getUrlString(url);
-            parseItemWithGson(jsonString);
-//            Log.i(TAG," Receive Json"+jsonString); // it's work .
-            JSONObject jsonBody = new JSONObject(jsonString);
-            parseItems(items,jsonBody);
-        }catch (JSONException je){
-            Log.e(TAG," Failed to parse Json Message ::  ",je);
-        }
-        catch (IOException ioe){
-            Log.e(TAG," Failed to fetch items ",ioe);
-        }
-        return items ;
-    }
 
-    public List<PhotoItem> fetchPhotoItmes(int page){
+    public List<PhotoItem> fetchPhotos(int page){
         List<PhotoItem> list = new ArrayList<>();
         String url = Uri.parse("https://api.flickr.com/services/rest/")
                 .buildUpon()
@@ -108,12 +89,15 @@ public class FlickerFetcher {
         }
         return list ;
     }
+    public int getPage(){
+        // return current page,from Photo class .
+        return  mPhotos.getPage() ;
+    }
     private List<PhotoItem> parseItemWithGson(String jsonString){
-        Response response = new Gson().fromJson(jsonString, Response.class);
-        Photos photos = response.getPhotos();
-        List<PhotoItem> photoItem = photos.getPhoto();
+        mResponse = new Gson().fromJson(jsonString, Response.class);
+        mPhotos = mResponse.getPhotos();
+        List<PhotoItem> photoItem = mPhotos.getPhoto();
 //        Log.i(" test "," Here size of List " + photoItem.size());
-
         return photoItem ;
     }
 
