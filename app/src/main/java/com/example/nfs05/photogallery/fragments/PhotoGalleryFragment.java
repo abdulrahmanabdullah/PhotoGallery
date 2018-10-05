@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.nfs05.photogallery.R;
 import com.example.nfs05.photogallery.data.PhotoItem;
@@ -24,7 +25,7 @@ import com.example.nfs05.photogallery.networks.FlickerFetcher;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PhotoGalleryFragment extends Fragment  {
+public class PhotoGalleryFragment extends Fragment implements ViewTreeObserver.OnGlobalLayoutListener {
 
 
 
@@ -34,46 +35,25 @@ public class PhotoGalleryFragment extends Fragment  {
     private GridLayoutManager layoutManager ;
     private RelativeLayout mRelativeLayout ;
     private FetchPhotoTask task ;
-    private int currentPage ;
-    private FlickerFetcher mFlickerFetcher ;
+    private final static int START_PAGE = 1 ;
+    private int currentPage  = START_PAGE;
+    private int total_page = 3 ;
+    private boolean isLoading = false ;
 
 
 
-    // When move next page ..
-    private RecyclerView.OnScrollListener onScrolled = new RecyclerView.OnScrollListener() {
-        @Override
-        public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-            super.onScrollStateChanged(recyclerView, newState);
-        }
-
-        @Override
-        public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-            super.onScrolled(recyclerView, dx, dy);
-            int visibleItemCount = layoutManager.getChildCount() ;
-            int totalItemCount  = layoutManager.getItemCount();
-            int firstItemPosition  = layoutManager.findFirstVisibleItemPosition();
-            // TODO: 10/4/18  add boolean variable . 
-            if ((firstItemPosition + visibleItemCount) >= totalItemCount){
-                mRelativeLayout.setVisibility(View.VISIBLE);
-//                increaseCurrentPage();
-                // todo :: execute task again ..
-                new FetchPhotoTask().execute(2);
-            }
-        }
-    };
 
     public static PhotoGalleryFragment newInstance(){
         return new PhotoGalleryFragment();
     }
 
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        //start execute task .
         task = new FetchPhotoTask();
-        task.execute(1);
-        mFlickerFetcher = new FlickerFetcher();
+        new FetchPhotoTask().execute(currentPage);
 
     }
 
@@ -85,18 +65,7 @@ public class PhotoGalleryFragment extends Fragment  {
         mRelativeLayout = view.findViewById(R.id.relative_layout);
         mRelativeLayout.setVisibility(View.GONE);
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
-        mRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                float columnWidthInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 140, getActivity().getResources().getDisplayMetrics());
-                int width = mRecyclerView.getWidth() ;
-//                Toast.makeText(getActivity()," columnWidth = "+ columnWidthInPixels+ " Recycler Width = "+width,Toast.LENGTH_LONG).show();
-                int column_number = Math.round(width / columnWidthInPixels);
-                layoutManager = new GridLayoutManager(getActivity(),column_number);
-                mRecyclerView.setLayoutManager(layoutManager);
-                mRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-            }
-        });
+        mRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(this);
         setupAdapter();
         return view;
     }
@@ -115,10 +84,47 @@ public class PhotoGalleryFragment extends Fragment  {
         task.cancel(true);
         // avoid memory leak .
         mRecyclerView.removeOnScrollListener(onScrolled);
-//        mRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
     }
 
+    @Override
+    public void onGlobalLayout() {
+        float columnWidthInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 140, getActivity().getResources().getDisplayMetrics());
+        int width = mRecyclerView.getWidth() ;
+        int column_number = Math.round(width / columnWidthInPixels);
+        layoutManager = new GridLayoutManager(getActivity(),column_number);
+        mRecyclerView.setLayoutManager(layoutManager);
+        mRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+    }
 
+    // When move next page ..
+    private RecyclerView.OnScrollListener onScrolled = new RecyclerView.OnScrollListener() {
+
+        @Override
+        public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+            super.onScrolled(recyclerView, dx, dy);
+            int visibleItemCount = layoutManager.getChildCount() ;
+            int totalItemCount  = layoutManager.getItemCount();
+            int firstItemPosition  = layoutManager.findFirstVisibleItemPosition();
+
+            if(!isLoading ){
+                if ((visibleItemCount +firstItemPosition) >= totalItemCount
+                        && firstItemPosition >= 0
+                        && totalItemCount >= total_page
+                        && currentPage <= total_page){
+                    Toast.makeText(getActivity(),"Here page = "+currentPage,Toast.LENGTH_SHORT).show();
+                    //todo : write some method to get more page. Done
+                    loadMorePhotos();
+                }
+            }
+        }
+    };
+
+    private void loadMorePhotos(){
+        isLoading = true;
+        currentPage++;
+        new FetchPhotoTask().execute(currentPage);
+
+    }
     // View Holder
     private class PhotoHolder extends RecyclerView.ViewHolder{
         private TextView mTitleTextView ;
@@ -176,18 +182,10 @@ public class PhotoGalleryFragment extends Fragment  {
             super.onPostExecute(photoItems);
             mRelativeLayout.setVisibility(mRecyclerView.isEnabled()?View.GONE:View.VISIBLE);
             if (!mPhotoItemList.isEmpty()){
-                final int oldPage = mPhotoItemList.size();
                 mPhotoItemList.addAll(photoItems);
                 mRecyclerView.getAdapter().notifyDataSetChanged();
                 Log.i(TAG," Current size of list = "+mPhotoItemList.size());
-//                mRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-//
-//                    @Override
-//                    public void onGlobalLayout() {
-//                       mRecyclerView.smoothScrollToPosition(oldPage);
-//                       mRecyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-//                    }
-//                });
+                isLoading = false;
             }else{
                 mPhotoItemList = photoItems;
                 setupAdapter();
@@ -196,12 +194,6 @@ public class PhotoGalleryFragment extends Fragment  {
 
     }
 
-    // load more photos.
-    private void increaseCurrentPage(){
-        currentPage++  ;
-        int firstVisibleItem = layoutManager.findFirstVisibleItemPosition();
-        Log.i(TAG,"FirstVisibleItem "+firstVisibleItem);
-    }
 
     /** This method how we can calculate a whole window   **/
 //    private void refreshGridView(){
@@ -219,18 +211,5 @@ public class PhotoGalleryFragment extends Fragment  {
         task.cancel(true);
     }
 
-    private class FetchMorePageTask extends AsyncTask<Void,Void,List<PhotoItem>>{
-
-        @Override
-        protected List<PhotoItem> doInBackground(Void... voids) {
-            return mFlickerFetcher.fetchPhotos(currentPage);
-        }
-
-
-        @Override
-        protected void onPostExecute(List<PhotoItem> photoItems) {
-            super.onPostExecute(photoItems);
-        }
-    }
 }
 
