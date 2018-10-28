@@ -24,7 +24,6 @@ public abstract class SingleFragmentActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 //        setContentView(R.layout.activity_fragment);
         setContentView(getLayoutResId());
-        Log.i("test"," Here Activity call ");
         FragmentManager fm =getSupportFragmentManager();
         Fragment fragment = fm.findFragmentById(R.id.container_fragment);
         if (fragment == null ) {

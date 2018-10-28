@@ -30,13 +30,24 @@ public class FlickerFetcher {
     private Response mResponse ;
   private  Photos mPhotos ;
   private PhotoItem mPhotoItem ;
+
+  private static final String FETCH_RECENTS_METHOD = "flickr.photos.getRecent";
+  private static final String SEARCH_METHOD = "flickr.photos.search";
+   private static String API_KEY = "cd323fa75ca30d9f80b5525bb3f1ac09";
+  private static final Uri ENDPOINT = Uri.parse("https://api.flickr.com/services/rest/")
+          .buildUpon()
+          .appendQueryParameter("api_key",API_KEY)
+          .appendQueryParameter("format","json")
+          .appendQueryParameter("nojsoncallback","1")
+           .appendQueryParameter("extras","url_s")
+          .build();
+
     public FlickerFetcher(){
         mResponse = new Response();
         mPhotos = new Photos();
         mPhotoItem = new PhotoItem();
     }
     private String TAG = "Fetcher";
-    private String API_KEY = "cd323fa75ca30d9f80b5525bb3f1ac09";
     // open connect and get bytes stream .
     public byte[] getUrlBytes(String urlSpec) throws IOException{
         URL url = new URL(urlSpec);
@@ -68,19 +79,46 @@ public class FlickerFetcher {
     }
 
 
-    public List<PhotoItem> fetchPhotos(int page){
+    private String buildUrl(String method, String query){
+        Uri.Builder builder = ENDPOINT.buildUpon()
+                .appendQueryParameter("method",method);
+        if (method.equals(SEARCH_METHOD)){
+            builder.appendQueryParameter("text",query);
+        }
+        return builder.build().toString();
+    }
+
+    public List<PhotoItem> fetchRecentPhotos(){
+        String url = buildUrl(FETCH_RECENTS_METHOD,null);
+        return fetchPhotos(url);
+    }
+
+    private String[] forbiddenWord(){
+        return new String[]{"pussy",
+                "anal","porn","pornstar","big tits","cam porn","blowjob","bbw","bi","cumshot","fisting","gangbang"
+        ,"milf","oiled","creampie","lesbian","mature","asmr","big cock"};
+    }
+    public List<PhotoItem> searchPhotos(String query){
+        // TODO: 09/10/2018  check query word , if it's a bad word change it to boring word .
+         for(String item : forbiddenWord()){
+             if ( item.equalsIgnoreCase(query)) query = "cat";
+         }
+        String url = buildUrl(SEARCH_METHOD,query);
+        return fetchPhotos(url);
+    }
+    public List<PhotoItem> fetchPhotos(String url){
         List<PhotoItem> list = new ArrayList<>();
-        String url = Uri.parse("https://api.flickr.com/services/rest/")
-                .buildUpon()
-                .appendQueryParameter("method","flickr.photos.getRecent")
-                .appendQueryParameter("api_key",API_KEY)
-                .appendQueryParameter("format","json")
-                .appendQueryParameter("nojsoncallback","1")
-                .appendQueryParameter("extras","url_s")
-                .appendQueryParameter("page",String.valueOf(page))
-                .build()
-                .toString();
-           Log.i(TAG," Url now is :  " + url) ; // it's work .
+//        String url = Uri.parse("https://api.flickr.com/services/rest/")
+//                .buildUpon()
+//                .appendQueryParameter("method","flickr.photos.getRecent")
+//                .appendQueryParameter("api_key",API_KEY)
+//                .appendQueryParameter("format","json")
+//                .appendQueryParameter("nojsoncallback","1")
+//                .appendQueryParameter("extras","url_s")
+//                .appendQueryParameter("page",String.valueOf(page))
+//                .build()
+//                .toString();
+           Log.i(TAG," Url now is :  " + ENDPOINT) ; // it's work .
         try {
             String jsonString = getUrlString(url);
             list = parseItemWithGson(jsonString);
@@ -88,10 +126,6 @@ public class FlickerFetcher {
             e.printStackTrace();
         }
         return list ;
-    }
-    public int getPage(){
-        // return current page,from Photo class .
-        return  mPhotos.getPage() ;
     }
     private List<PhotoItem> parseItemWithGson(String jsonString){
         mResponse = new Gson().fromJson(jsonString, Response.class);
