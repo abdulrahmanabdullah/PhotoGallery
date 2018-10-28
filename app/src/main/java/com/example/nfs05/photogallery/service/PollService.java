@@ -2,14 +2,20 @@ package com.example.nfs05.photogallery.service;
 
 import android.app.AlarmManager;
 import android.app.IntentService;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
+import com.example.nfs05.photogallery.PhotoGalleryActivity;
+import com.example.nfs05.photogallery.R;
 import com.example.nfs05.photogallery.data.PhotoItem;
 import com.example.nfs05.photogallery.model.GalleryItem;
 import com.example.nfs05.photogallery.networks.FlickerFetcher;
@@ -34,7 +40,7 @@ public class PollService extends IntentService {
         // if user not have connection not do anything .
         if(!isNetworkAvailableAndConnected()) return;
 
-        // Get a default
+        // Get a default Shared Preferences .
         String query = QueryPreferences.getStoredQuery(this);
         String lastResultId = QueryPreferences.getLastResultId(this);
         List<PhotoItem> items ;
@@ -50,9 +56,33 @@ public class PollService extends IntentService {
        }else{
            Log.i(TAG," Got a new result : "+resultId);
        }
+       // Start notification
+        Resources resources = getResources(); // this for get title
+        Intent i = PhotoGalleryActivity.newIntent(this);
+        PendingIntent pi = PendingIntent.getService(this,0,i,0);
+        NotificationCompat.Builder notification =
+                new NotificationCompat.Builder(this,"PhotoGalleryChannel");
+
+                notification.setTicker(resources.getString(R.string.new_pictures_title))
+                .setSmallIcon(android.R.drawable.ic_menu_report_image)
+                .setContentTitle(resources.getString(R.string.new_pictures_title))
+                .setContentText(resources.getString(R.string.new_pictures_text))
+                .setContentIntent(pi)
+                .setAutoCancel(true);
+
+
+        NotificationManagerCompat notificationManager =
+                NotificationManagerCompat.from(this);
+        notificationManager.notify(0,notification.build());
        QueryPreferences.setLastResultId(this,resultId);
     }
 
+    // If PendingIntent Not exists , create .
+    public static boolean isServiceAlarmOn(Context context){
+       Intent i = PollService.newIntent(context);
+       PendingIntent pi = PendingIntent.getService(context,0,i,PendingIntent.FLAG_NO_CREATE);
+        return pi != null ; // if pi return null that means Alarm not set .
+    }
     // Check Network available && connected
     private boolean isNetworkAvailableAndConnected(){
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
