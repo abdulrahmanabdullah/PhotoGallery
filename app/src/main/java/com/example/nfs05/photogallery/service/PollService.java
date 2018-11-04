@@ -3,6 +3,7 @@ package com.example.nfs05.photogallery.service;
 import android.app.AlarmManager;
 import android.app.IntentService;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -29,19 +30,28 @@ public class PollService extends IntentService {
     private static final String TAG = "PollService";
     // Set interval to 1 minute .
     private static final long POLL_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
+
+
+    // Call Service from this method .
     public static Intent newIntent(Context context){
         return new Intent(context,PollService.class);
     }
+
+
     public PollService(){
         super(TAG);
     }
+
+
+    // send command as queue, One by one .
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
         // if user not have connection not do anything .
         if(!isNetworkAvailableAndConnected()) return;
 
-        // Get a default Shared Preferences .
+        // Pull the default query  and the last result Id .
         String query = QueryPreferences.getStoredQuery(this);
+
         String lastResultId = QueryPreferences.getLastResultId(this);
         List<PhotoItem> items ;
         if (query == null){
@@ -60,20 +70,35 @@ public class PollService extends IntentService {
         Resources resources = getResources(); // this for get title
         Intent i = PhotoGalleryActivity.newIntent(this);
         PendingIntent pi = PendingIntent.getService(this,0,i,0);
-        NotificationCompat.Builder notification =
-                new NotificationCompat.Builder(this,"PhotoGalleryChannel");
+//        NotificationCompat.Builder notification =
+//                new NotificationCompat.Builder(this,"PhotoGalleryChannel");
+//
+//                notification.setTicker(resources.getString(R.string.new_pictures_title))
+//                .setSmallIcon(android.R.drawable.ic_menu_report_image)
+//                .setContentTitle(resources.getString(R.string.new_pictures_title))
+//                .setContentText(resources.getString(R.string.new_pictures_text))
+//                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+//                .setContentIntent(pi)
+//                .setAutoCancel(true);
+//
+//
+//        NotificationManagerCompat notificationManager =
+//                NotificationManagerCompat.from(this);
+//        notificationManager.notify(0,notification.build());
 
-                notification.setTicker(resources.getString(R.string.new_pictures_title))
+        Notification nof = new NotificationCompat.Builder(this,"CS")
+                .setTicker("Some Ticker ")
                 .setSmallIcon(android.R.drawable.ic_menu_report_image)
                 .setContentTitle(resources.getString(R.string.new_pictures_title))
                 .setContentText(resources.getString(R.string.new_pictures_text))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(pi)
-                .setAutoCancel(true);
+                .setAutoCancel(true)
+                .build();
 
+        NotificationManagerCompat co = NotificationManagerCompat.from(this);
+        co.notify(0,nof);
 
-        NotificationManagerCompat notificationManager =
-                NotificationManagerCompat.from(this);
-        notificationManager.notify(0,notification.build());
        QueryPreferences.setLastResultId(this,resultId);
     }
 
@@ -83,7 +108,7 @@ public class PollService extends IntentService {
        PendingIntent pi = PendingIntent.getService(context,0,i,PendingIntent.FLAG_NO_CREATE);
         return pi != null ; // if pi return null that means Alarm not set .
     }
-    // Check Network available && connected
+    // Verify the Network is  available && connected
     private boolean isNetworkAvailableAndConnected(){
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
 

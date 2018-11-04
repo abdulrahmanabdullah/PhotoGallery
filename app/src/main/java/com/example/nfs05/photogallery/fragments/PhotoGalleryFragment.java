@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -31,7 +32,9 @@ import com.example.nfs05.photogallery.R;
 import com.example.nfs05.photogallery.data.PhotoItem;
 import com.example.nfs05.photogallery.handler.ThumbnailDownloader;
 import com.example.nfs05.photogallery.networks.FlickerFetcher;
+import com.example.nfs05.photogallery.service.PollJobService;
 import com.example.nfs05.photogallery.service.PollService;
+import com.example.nfs05.photogallery.service.PollServiceTwo;
 import com.example.nfs05.photogallery.utlies.QueryPreferences;
 
 import java.util.ArrayList;
@@ -52,7 +55,7 @@ public class PhotoGalleryFragment extends Fragment implements ViewTreeObserver.O
     private boolean isLoading = false ;
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
-
+    private PollJobService mJobService ;
     public static PhotoGalleryFragment newInstance(){
         return new PhotoGalleryFragment();
     }
@@ -66,6 +69,7 @@ public class PhotoGalleryFragment extends Fragment implements ViewTreeObserver.O
 //        getActivity().startService(i);
 //        PollService.setServiceAlarm(getActivity(),true);
         startHandler();
+        checkApiLevel();
         setHasOptionsMenu(true);
 //        Log.i(TAG," Background thread started .");
         updateItems();
@@ -132,9 +136,13 @@ public class PhotoGalleryFragment extends Fragment implements ViewTreeObserver.O
                 updateItems();
                 return true;
             case R.id.menu_item_toggle_polling:
-                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
-                PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
-                getActivity().invalidateOptionsMenu();
+//                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+//                PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
+//                getActivity().invalidateOptionsMenu();
+//                startAnotherJob();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                    PollJobService.checkApi();
+                }
                 return true;
                 default:
                     return super.onOptionsItemSelected(item);
@@ -322,5 +330,23 @@ public class PhotoGalleryFragment extends Fragment implements ViewTreeObserver.O
     public void onPause() {
         super.onPause();
     }
+
+
+    private void startAnotherJob(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+            PollServiceTwo p = new PollServiceTwo(getActivity());
+           p.startSchulder(getContext());
+        }else{
+            Toast.makeText(getActivity(),"Failed start service ",Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void checkApiLevel(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        {
+           mJobService = new PollJobService(getContext());
+        }
+    }
+
 }
 

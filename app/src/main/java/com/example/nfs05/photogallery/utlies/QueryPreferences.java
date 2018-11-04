@@ -32,6 +32,7 @@ public class QueryPreferences {
                 .getString(PREE_LAST_ID,null);
     }
 
+    // set the latest result id .
     public static void setLastResultId(Context context , String lastResultId){
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
